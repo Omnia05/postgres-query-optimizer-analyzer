@@ -1,0 +1,299 @@
+Task 4: Plan Switch Correction Results
+============================================================
+
+Query 1 — Switch S2 (DELAYED)
+  Optimizer's switch: 1992-01-27 → 1992-01-28
+  Plan Pi:
+    Aggregate (Plain)
+      Index Scan on lineitem using idx_lineitem_shipdate
+  Plan Pj:
+    Aggregate (Plain)
+      Gather
+        Aggregate (Plain)
+          Bitmap Heap Scan on lineitem
+            Bitmap Index Scan using idx_lineitem_shipdate
+  Optimal Switch: 1992-01-09 → 1992-01-10
+  (Optimizer switched at 1992-01-27 → 1992-01-28)
+
+  Execution Times at Optimal Switch:
+    RT(Pi, d*i=1992-01-09) = 24.43 ms
+    RT(Pj, d*j=1992-01-10) = 25.30 ms
+    RT(Pi, d*j=1992-01-10) = 40.10 ms  [forced]
+    RT(Pj, d*i=1992-01-09) = 27.86 ms  [forced]
+
+  Validation:
+    Pi better at d*i: RT(Pi,d*i)=24.43 <= RT(Pj,d*i)=27.86 → True
+    Pj better at d*j: RT(Pj,d*j)=25.30 <= RT(Pi,d*j)=40.10 → True
+  Optimal Switch Valid: YES
+
+
+Query 1 — Switch S3 (EARLY)
+  Optimizer's switch: 1992-03-29 → 1992-03-30
+  Plan Pi:
+    Aggregate (Plain)
+      Gather
+        Aggregate (Plain)
+          Bitmap Heap Scan on lineitem
+            Bitmap Index Scan using idx_lineitem_shipdate
+  Plan Pj:
+    Aggregate (Plain)
+      Gather
+        Aggregate (Plain)
+          Seq Scan on lineitem
+  Optimal Switch: 1998-02-21 → 1998-02-22
+  (Optimizer switched at 1992-03-29 → 1992-03-30)
+
+  Execution Times at Optimal Switch:
+    RT(Pi, d*i=1998-02-21) = 21051.96 ms
+    RT(Pj, d*j=1998-02-22) = 20018.65 ms
+    RT(Pi, d*j=1998-02-22) = 20056.97 ms  [forced]
+    RT(Pj, d*i=1998-02-21) = 19926.20 ms  [forced]
+
+  Validation:
+    Pi better at d*i: RT(Pi,d*i)=21051.96 <= RT(Pj,d*i)=19926.20 → False
+    Pj better at d*j: RT(Pj,d*j)=20018.65 <= RT(Pi,d*j)=20056.97 → True
+  Optimal Switch Valid: NO (boundary case)
+
+
+Query 2 — Switch S1 (EARLY)
+  Optimizer's switch: 1992-01-01 → 1992-01-02
+  Plan Pi:
+    Aggregate (Sorted)
+      Sort
+        Nested Loop [Semi]
+          Index Scan on orders using idx_orders_orderdate
+          Index Scan on lineitem using lineitem_pkey
+  Plan Pj:
+    Aggregate (Sorted)
+      Gather Merge
+        Aggregate (Sorted)
+          Sort
+            Nested Loop [Semi]
+              Bitmap Heap Scan on orders
+                Bitmap Index Scan using idx_orders_orderdate
+              Index Scan on lineitem using lineitem_pkey
+  Optimal Switch: NOT FOUND
+  Pi remains better throughout the entire data range.
+  The optimizer should never have switched to Pj.
+
+
+Query 2 — Switch S2 (EARLY)
+  Optimizer's switch: 1992-05-13 → 1992-05-14
+  Plan Pi:
+    Aggregate (Sorted)
+      Gather Merge
+        Aggregate (Sorted)
+          Sort
+            Nested Loop [Semi]
+              Bitmap Heap Scan on orders
+                Bitmap Index Scan using idx_orders_orderdate
+              Index Scan on lineitem using lineitem_pkey
+  Plan Pj:
+    Aggregate (Sorted)
+      Gather Merge
+        Aggregate (Sorted)
+          Sort
+            Hash Join [Semi]
+              Seq Scan on orders
+              Hash
+                Seq Scan on lineitem
+  Optimal Switch: 1997-02-01 → 1997-02-02
+  (Optimizer switched at 1992-05-13 → 1992-05-14)
+
+  Execution Times at Optimal Switch:
+    RT(Pi, d*i=1997-02-01) = 21267.14 ms
+    RT(Pj, d*j=1997-02-02) = 19558.80 ms
+    RT(Pi, d*j=1997-02-02) = 24367.67 ms  [forced]
+    RT(Pj, d*i=1997-02-01) = 26040.85 ms  [forced]
+
+  Validation:
+    Pi better at d*i: RT(Pi,d*i)=21267.14 <= RT(Pj,d*i)=26040.85 → True
+    Pj better at d*j: RT(Pj,d*j)=19558.80 <= RT(Pi,d*j)=24367.67 → True
+  Optimal Switch Valid: YES
+
+
+Query 3 — Switch S1 (EARLY)
+  Optimizer's switch: 1992-01-01 → 1992-01-02
+  Plan Pi:
+    Nested Loop [Inner]
+      Nested Loop [Inner]
+        Index Scan on orders using idx_orders_orderdate
+        Index Scan on customer using customer_pkey
+      Index Scan on lineitem using lineitem_pkey
+  Plan Pj:
+    Gather
+      Nested Loop [Inner]
+        Nested Loop [Inner]
+          Bitmap Heap Scan on orders
+            Bitmap Index Scan using idx_orders_orderdate
+          Index Scan on customer using customer_pkey
+        Index Scan on lineitem using lineitem_pkey
+  Optimal Switch: 1996-12-04 → 1996-12-05
+  (Optimizer switched at 1992-01-01 → 1992-01-02)
+
+  Execution Times at Optimal Switch:
+    RT(Pi, d*i=1996-12-04) = 16007.11 ms
+    RT(Pj, d*j=1996-12-05) = 15926.46 ms
+    RT(Pi, d*j=1996-12-05) = 16470.02 ms  [forced]
+    RT(Pj, d*i=1996-12-04) = 19536.78 ms  [forced]
+
+  Validation:
+    Pi better at d*i: RT(Pi,d*i)=16007.11 <= RT(Pj,d*i)=19536.78 → True
+    Pj better at d*j: RT(Pj,d*j)=15926.46 <= RT(Pi,d*j)=16470.02 → True
+  Optimal Switch Valid: YES
+
+
+Query 3 — Switch S2 (DELAYED)
+  Optimizer's switch: 1992-01-03 → 1992-01-04
+  Plan Pi:
+    Gather
+      Nested Loop [Inner]
+        Nested Loop [Inner]
+          Bitmap Heap Scan on orders
+            Bitmap Index Scan using idx_orders_orderdate
+          Index Scan on customer using customer_pkey
+        Index Scan on lineitem using lineitem_pkey
+  Plan Pj:
+    Gather
+      Nested Loop [Inner]
+        Hash Join [Inner]
+          Seq Scan on customer
+          Hash
+            Bitmap Heap Scan on orders
+              Bitmap Index Scan using idx_orders_orderdate
+        Index Scan on lineitem using lineitem_pkey
+  Optimal Switch: 1992-01-01 → 1992-01-02
+  (Optimizer switched at 1992-01-03 → 1992-01-04)
+
+  Execution Times at Optimal Switch:
+    RT(Pi, d*i=1992-01-01) = 0.02 ms
+    RT(Pj, d*j=1992-01-02) = 102.43 ms
+    RT(Pi, d*j=1992-01-02) = 96.76 ms  [forced]
+    RT(Pj, d*i=1992-01-01) = 0.02 ms  [forced]
+
+  Validation:
+    Pi better at d*i: RT(Pi,d*i)=0.02 <= RT(Pj,d*i)=0.02 → True
+    Pj better at d*j: RT(Pj,d*j)=102.43 <= RT(Pi,d*j)=96.76 → False
+  Optimal Switch Valid: NO (boundary case)
+
+
+Query 3 — Switch S3 (EARLY)
+  Optimizer's switch: 1992-01-06 → 1992-01-07
+  Plan Pi:
+    Gather
+      Nested Loop [Inner]
+        Hash Join [Inner]
+          Seq Scan on customer
+          Hash
+            Bitmap Heap Scan on orders
+              Bitmap Index Scan using idx_orders_orderdate
+        Index Scan on lineitem using lineitem_pkey
+  Plan Pj:
+    Gather
+      Nested Loop [Inner]
+        Hash Join [Inner]
+          Bitmap Heap Scan on orders
+            Bitmap Index Scan using idx_orders_orderdate
+          Hash
+            Seq Scan on customer
+        Index Scan on lineitem using lineitem_pkey
+  Optimal Switch: 1995-06-13 → 1995-06-14
+  (Optimizer switched at 1992-01-06 → 1992-01-07)
+
+  Execution Times at Optimal Switch:
+    RT(Pi, d*i=1995-06-13) = 17492.56 ms
+    RT(Pj, d*j=1995-06-14) = 16864.17 ms
+    RT(Pi, d*j=1995-06-14) = 17275.39 ms  [forced]
+    RT(Pj, d*i=1995-06-13) = 22370.94 ms  [forced]
+
+  Validation:
+    Pi better at d*i: RT(Pi,d*i)=17492.56 <= RT(Pj,d*i)=22370.94 → True
+    Pj better at d*j: RT(Pj,d*j)=16864.17 <= RT(Pi,d*j)=17275.39 → True
+  Optimal Switch Valid: YES
+
+
+Query 3 — Switch S4 (EARLY)
+  Optimizer's switch: 1992-01-18 → 1992-01-19
+  Plan Pi:
+    Gather
+      Nested Loop [Inner]
+        Hash Join [Inner]
+          Bitmap Heap Scan on orders
+            Bitmap Index Scan using idx_orders_orderdate
+          Hash
+            Seq Scan on customer
+        Index Scan on lineitem using lineitem_pkey
+  Plan Pj:
+    Gather
+      Hash Join [Inner]
+        Hash Join [Inner]
+          Seq Scan on lineitem
+          Hash
+            Bitmap Heap Scan on orders
+              Bitmap Index Scan using idx_orders_orderdate
+        Hash
+          Seq Scan on customer
+  Optimal Switch: NOT FOUND
+  Pi remains better throughout the entire data range.
+  The optimizer should never have switched to Pj.
+
+
+Query 3 — Switch S6 (EARLY)
+  Optimizer's switch: 1992-03-08 → 1992-03-09
+  Plan Pi:
+    Gather
+      Hash Join [Inner]
+        Hash Join [Inner]
+          Seq Scan on lineitem
+          Hash
+            Seq Scan on orders
+        Hash
+          Seq Scan on customer
+  Plan Pj:
+    Gather
+      Hash Join [Inner]
+        Seq Scan on lineitem
+        Hash
+          Hash Join [Inner]
+            Seq Scan on orders
+            Hash
+              Seq Scan on customer
+  Optimal Switch: NOT FOUND
+  Pi remains better throughout the entire data range.
+  The optimizer should never have switched to Pj.
+
+
+Query 3 — Switch S7 (DELAYED)
+  Optimizer's switch: 1992-03-13 → 1992-03-14
+  Plan Pi:
+    Gather
+      Hash Join [Inner]
+        Seq Scan on lineitem
+        Hash
+          Hash Join [Inner]
+            Seq Scan on orders
+            Hash
+              Seq Scan on customer
+  Plan Pj:
+    Gather
+      Hash Join [Inner]
+        Seq Scan on lineitem
+        Hash
+          Hash Join [Inner]
+            Bitmap Heap Scan on orders
+              Bitmap Index Scan using idx_orders_orderdate
+            Hash
+              Seq Scan on customer
+  Optimal Switch: 1992-01-01 → 1992-01-02
+  (Optimizer switched at 1992-03-13 → 1992-03-14)
+
+  Execution Times at Optimal Switch:
+    RT(Pi, d*i=1992-01-01) = 0.01 ms
+    RT(Pj, d*j=1992-01-02) = 152.59 ms
+    RT(Pi, d*j=1992-01-02) = 100.60 ms  [forced]
+    RT(Pj, d*i=1992-01-01) = 0.02 ms  [forced]
+
+  Validation:
+    Pi better at d*i: RT(Pi,d*i)=0.01 <= RT(Pj,d*i)=0.02 → True
+    Pj better at d*j: RT(Pj,d*j)=152.59 <= RT(Pi,d*j)=100.60 → False
+  Optimal Switch Valid: NO (boundary case)

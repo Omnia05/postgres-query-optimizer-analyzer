@@ -1,0 +1,394 @@
+
+Query 1:
+
+  Switch 1: 1992-01-07 and 1992-01-08
+    Plan Pi (before switch):
+        Aggregate (Plain)
+          Bitmap Heap Scan on lineitem
+            Bitmap Index Scan using idx_lineitem_shipdate
+    Plan Pj (after switch):
+        Aggregate (Plain)
+          Index Scan on lineitem using idx_lineitem_shipdate
+    RT(Pi, qi) = 19.63 ms
+    RT(Pj, qj) = 11.85 ms
+    RT(Pi, qj) = 19.38 ms  [Pi forced at qj]
+    RT(Pj, qi) = 29.89 ms  [Pj forced at qi]
+    Classification: CORRECT
+    Justification:
+      RT(Pi, qi)=19.63ms < RT(Pj, qi)=29.89ms (Pi better before)
+      RT(Pj, qj)=11.85ms < RT(Pi, qj)=19.38ms (Pj better after)
+      Optimizer switched at the right time.
+
+
+  Switch 2: 1992-01-27 and 1992-01-28
+    Plan Pi (before switch):
+        Aggregate (Plain)
+          Index Scan on lineitem using idx_lineitem_shipdate
+    Plan Pj (after switch):
+        Aggregate (Plain)
+          Gather
+            Aggregate (Plain)
+              Bitmap Heap Scan on lineitem
+                Bitmap Index Scan using idx_lineitem_shipdate
+    RT(Pi, qi) = 491.32 ms
+    RT(Pj, qj) = 392.76 ms
+    RT(Pi, qj) = 381.54 ms  [Pi forced at qj]
+    RT(Pj, qi) = 444.17 ms  [Pj forced at qi]
+    Classification: DELAYED
+    Justification:
+      RT(Pj, qi)=444.17ms < RT(Pi, qi)=491.32ms
+      Pj was already faster BEFORE the switch.
+      Optimizer should have switched earlier.
+
+
+  Switch 3: 1992-03-29 and 1992-03-30
+    Plan Pi (before switch):
+        Aggregate (Plain)
+          Gather
+            Aggregate (Plain)
+              Bitmap Heap Scan on lineitem
+                Bitmap Index Scan using idx_lineitem_shipdate
+    Plan Pj (after switch):
+        Aggregate (Plain)
+          Gather
+            Aggregate (Plain)
+              Seq Scan on lineitem
+    RT(Pi, qi) = 1402.40 ms
+    RT(Pj, qj) = 65502.06 ms
+    RT(Pi, qj) = 14090.69 ms  [Pi forced at qj]
+    RT(Pj, qi) = 2154.57 ms  [Pj forced at qi]
+    Classification: EARLY
+    Justification:
+      RT(Pi, qj)=14090.69ms < RT(Pj, qj)=65502.06ms
+      Pi was still faster AFTER the switch.
+      Optimizer switched too soon.
+
+
+Query 2:
+
+  Switch 1: 1992-01-01 and 1992-01-02
+    Plan Pi (before switch):
+        Aggregate (Sorted)
+          Sort
+            Nested Loop [Semi]
+              Index Scan on orders using idx_orders_orderdate
+              Index Scan on lineitem using lineitem_pkey
+    Plan Pj (after switch):
+        Aggregate (Sorted)
+          Gather Merge
+            Aggregate (Sorted)
+              Sort
+                Nested Loop [Semi]
+                  Bitmap Heap Scan on orders
+                    Bitmap Index Scan using idx_orders_orderdate
+                  Index Scan on lineitem using lineitem_pkey
+    RT(Pi, qi) = 0.10 ms
+    RT(Pj, qj) = 97.66 ms
+    RT(Pi, qj) = 85.14 ms  [Pi forced at qj]
+    RT(Pj, qi) = 0.02 ms  [Pj forced at qi]
+    Classification: EARLY
+    Justification:
+      RT(Pi, qj)=85.14ms < RT(Pj, qj)=97.66ms
+      Pi was still faster AFTER the switch.
+      Optimizer switched too soon.
+
+
+  Switch 2: 1992-05-13 and 1992-05-14
+    Plan Pi (before switch):
+        Aggregate (Sorted)
+          Gather Merge
+            Aggregate (Sorted)
+              Sort
+                Nested Loop [Semi]
+                  Bitmap Heap Scan on orders
+                    Bitmap Index Scan using idx_orders_orderdate
+                  Index Scan on lineitem using lineitem_pkey
+    Plan Pj (after switch):
+        Aggregate (Sorted)
+          Gather Merge
+            Aggregate (Sorted)
+              Sort
+                Hash Join [Semi]
+                  Seq Scan on orders
+                  Hash
+                    Seq Scan on lineitem
+    RT(Pi, qi) = 26873.38 ms
+    RT(Pj, qj) = 47537.95 ms
+    RT(Pi, qj) = 23095.95 ms  [Pi forced at qj]
+    RT(Pj, qi) = 42558.67 ms  [Pj forced at qi]
+    Classification: EARLY
+    Justification:
+      RT(Pi, qj)=23095.95ms < RT(Pj, qj)=47537.95ms
+      Pi was still faster AFTER the switch.
+      Optimizer switched too soon.
+
+
+  Switch 3: 1997-11-25 and 1997-11-26
+    Plan Pi (before switch):
+        Aggregate (Sorted)
+          Gather Merge
+            Aggregate (Sorted)
+              Sort
+                Hash Join [Semi]
+                  Seq Scan on orders
+                  Hash
+                    Seq Scan on lineitem
+    Plan Pj (after switch):
+        Aggregate (Sorted)
+          Gather Merge
+            Sort
+              Aggregate (Hashed)
+                Hash Join [Semi]
+                  Seq Scan on orders
+                  Hash
+                    Seq Scan on lineitem
+    RT(Pi, qi) = 33402.00 ms
+    RT(Pj, qj) = 21634.67 ms
+    RT(Pi, qj) = 39843.94 ms  [Pi forced at qj]
+    RT(Pj, qi) = 48838.36 ms  [Pj forced at qi]
+    Classification: CORRECT
+    Justification:
+      RT(Pi, qi)=33402.00ms < RT(Pj, qi)=48838.36ms (Pi better before)
+      RT(Pj, qj)=21634.67ms < RT(Pi, qj)=39843.94ms (Pj better after)
+      Optimizer switched at the right time.
+
+
+Query 3:
+
+  Switch 1: 1992-01-01 and 1992-01-02
+    Plan Pi (before switch):
+        Nested Loop [Inner]
+          Nested Loop [Inner]
+            Index Scan on orders using idx_orders_orderdate
+            Index Scan on customer using customer_pkey
+          Index Scan on lineitem using lineitem_pkey
+    Plan Pj (after switch):
+        Gather
+          Nested Loop [Inner]
+            Nested Loop [Inner]
+              Bitmap Heap Scan on orders
+                Bitmap Index Scan using idx_orders_orderdate
+              Index Scan on customer using customer_pkey
+            Index Scan on lineitem using lineitem_pkey
+    RT(Pi, qi) = 0.02 ms
+    RT(Pj, qj) = 118.45 ms
+    RT(Pi, qj) = 107.78 ms  [Pi forced at qj]
+    RT(Pj, qi) = 0.02 ms  [Pj forced at qi]
+    Classification: EARLY
+    Justification:
+      RT(Pi, qj)=107.78ms < RT(Pj, qj)=118.45ms
+      Pi was still faster AFTER the switch.
+      Optimizer switched too soon.
+
+
+  Switch 2: 1992-01-03 and 1992-01-04
+    Plan Pi (before switch):
+        Gather
+          Nested Loop [Inner]
+            Nested Loop [Inner]
+              Bitmap Heap Scan on orders
+                Bitmap Index Scan using idx_orders_orderdate
+              Index Scan on customer using customer_pkey
+            Index Scan on lineitem using lineitem_pkey
+    Plan Pj (after switch):
+        Gather
+          Nested Loop [Inner]
+            Hash Join [Inner]
+              Seq Scan on customer
+              Hash
+                Bitmap Heap Scan on orders
+                  Bitmap Index Scan using idx_orders_orderdate
+            Index Scan on lineitem using lineitem_pkey
+    RT(Pi, qi) = 191.38 ms
+    RT(Pj, qj) = 263.90 ms
+    RT(Pi, qj) = 244.28 ms  [Pi forced at qj]
+    RT(Pj, qi) = 155.39 ms  [Pj forced at qi]
+    Classification: DELAYED
+    Justification:
+      RT(Pj, qi)=155.39ms < RT(Pi, qi)=191.38ms
+      Pj was already faster BEFORE the switch.
+      Optimizer should have switched earlier.
+
+
+  Switch 3: 1992-01-06 and 1992-01-07
+    Plan Pi (before switch):
+        Gather
+          Nested Loop [Inner]
+            Hash Join [Inner]
+              Seq Scan on customer
+              Hash
+                Bitmap Heap Scan on orders
+                  Bitmap Index Scan using idx_orders_orderdate
+            Index Scan on lineitem using lineitem_pkey
+    Plan Pj (after switch):
+        Gather
+          Nested Loop [Inner]
+            Hash Join [Inner]
+              Bitmap Heap Scan on orders
+                Bitmap Index Scan using idx_orders_orderdate
+              Hash
+                Seq Scan on customer
+            Index Scan on lineitem using lineitem_pkey
+    RT(Pi, qi) = 584.77 ms
+    RT(Pj, qj) = 673.55 ms
+    RT(Pi, qj) = 659.92 ms  [Pi forced at qj]
+    RT(Pj, qi) = 626.39 ms  [Pj forced at qi]
+    Classification: EARLY
+    Justification:
+      RT(Pi, qj)=659.92ms < RT(Pj, qj)=673.55ms
+      Pi was still faster AFTER the switch.
+      Optimizer switched too soon.
+
+
+  Switch 4: 1992-01-18 and 1992-01-19
+    Plan Pi (before switch):
+        Gather
+          Nested Loop [Inner]
+            Hash Join [Inner]
+              Bitmap Heap Scan on orders
+                Bitmap Index Scan using idx_orders_orderdate
+              Hash
+                Seq Scan on customer
+            Index Scan on lineitem using lineitem_pkey
+    Plan Pj (after switch):
+        Gather
+          Hash Join [Inner]
+            Hash Join [Inner]
+              Seq Scan on lineitem
+              Hash
+                Bitmap Heap Scan on orders
+                  Bitmap Index Scan using idx_orders_orderdate
+            Hash
+              Seq Scan on customer
+    RT(Pi, qi) = 886.19 ms
+    RT(Pj, qj) = 17409.65 ms
+    RT(Pi, qj) = 14173.87 ms  [Pi forced at qj]
+    RT(Pj, qi) = 758.34 ms  [Pj forced at qi]
+    Classification: EARLY
+    Justification:
+      RT(Pi, qj)=14173.87ms < RT(Pj, qj)=17409.65ms
+      Pi was still faster AFTER the switch.
+      Optimizer switched too soon.
+
+
+  Switch 5: 1992-02-14 and 1992-02-15
+    Plan Pi (before switch):
+        Gather
+          Hash Join [Inner]
+            Hash Join [Inner]
+              Seq Scan on lineitem
+              Hash
+                Bitmap Heap Scan on orders
+                  Bitmap Index Scan using idx_orders_orderdate
+            Hash
+              Seq Scan on customer
+    Plan Pj (after switch):
+        Gather
+          Hash Join [Inner]
+            Hash Join [Inner]
+              Seq Scan on lineitem
+              Hash
+                Seq Scan on orders
+            Hash
+              Seq Scan on customer
+    RT(Pi, qi) = 17920.22 ms
+    RT(Pj, qj) = 14256.06 ms
+    RT(Pi, qj) = 15829.76 ms  [Pi forced at qj]
+    RT(Pj, qi) = 49741.92 ms  [Pj forced at qi]
+    Classification: CORRECT
+    Justification:
+      RT(Pi, qi)=17920.22ms < RT(Pj, qi)=49741.92ms (Pi better before)
+      RT(Pj, qj)=14256.06ms < RT(Pi, qj)=15829.76ms (Pj better after)
+      Optimizer switched at the right time.
+
+
+  Switch 6: 1992-03-08 and 1992-03-09
+    Plan Pi (before switch):
+        Gather
+          Hash Join [Inner]
+            Hash Join [Inner]
+              Seq Scan on lineitem
+              Hash
+                Seq Scan on orders
+            Hash
+              Seq Scan on customer
+    Plan Pj (after switch):
+        Gather
+          Hash Join [Inner]
+            Seq Scan on lineitem
+            Hash
+              Hash Join [Inner]
+                Seq Scan on orders
+                Hash
+                  Seq Scan on customer
+    RT(Pi, qi) = 17122.60 ms
+    RT(Pj, qj) = 16788.16 ms
+    RT(Pi, qj) = 14929.00 ms  [Pi forced at qj]
+    RT(Pj, qi) = 17452.34 ms  [Pj forced at qi]
+    Classification: EARLY
+    Justification:
+      RT(Pi, qj)=14929.00ms < RT(Pj, qj)=16788.16ms
+      Pi was still faster AFTER the switch.
+      Optimizer switched too soon.
+
+
+  Switch 7: 1992-03-13 and 1992-03-14
+    Plan Pi (before switch):
+        Gather
+          Hash Join [Inner]
+            Seq Scan on lineitem
+            Hash
+              Hash Join [Inner]
+                Seq Scan on orders
+                Hash
+                  Seq Scan on customer
+    Plan Pj (after switch):
+        Gather
+          Hash Join [Inner]
+            Seq Scan on lineitem
+            Hash
+              Hash Join [Inner]
+                Bitmap Heap Scan on orders
+                  Bitmap Index Scan using idx_orders_orderdate
+                Hash
+                  Seq Scan on customer
+    RT(Pi, qi) = 22809.63 ms
+    RT(Pj, qj) = 19786.92 ms
+    RT(Pi, qj) = 141305.54 ms  [Pi forced at qj]
+    RT(Pj, qi) = 17669.26 ms  [Pj forced at qi]
+    Classification: DELAYED
+    Justification:
+      RT(Pj, qi)=17669.26ms < RT(Pi, qi)=22809.63ms
+      Pj was already faster BEFORE the switch.
+      Optimizer should have switched earlier.
+
+
+  Switch 8: 1992-05-16 and 1992-05-17
+    Plan Pi (before switch):
+        Gather
+          Hash Join [Inner]
+            Seq Scan on lineitem
+            Hash
+              Hash Join [Inner]
+                Bitmap Heap Scan on orders
+                  Bitmap Index Scan using idx_orders_orderdate
+                Hash
+                  Seq Scan on customer
+    Plan Pj (after switch):
+        Gather
+          Hash Join [Inner]
+            Seq Scan on lineitem
+            Hash
+              Hash Join [Inner]
+                Seq Scan on orders
+                Hash
+                  Seq Scan on customer
+    RT(Pi, qi) = 20829.98 ms
+    RT(Pj, qj) = 15894.62 ms
+    RT(Pi, qj) = 16344.35 ms  [Pi forced at qj]
+    RT(Pj, qi) = 38033.32 ms  [Pj forced at qi]
+    Classification: CORRECT
+    Justification:
+      RT(Pi, qi)=20829.98ms < RT(Pj, qi)=38033.32ms (Pi better before)
+      RT(Pj, qj)=15894.62ms < RT(Pi, qj)=16344.35ms (Pj better after)
+      Optimizer switched at the right time.
